@@ -67,16 +67,8 @@ int main(int argc, char* argv[]) {
    elapsed = finish - start;
 
    sum = 4.0*sum;
-   printf("With n = %lld terms,\n", n);
-   printf("   Our estimate of pi = %.15f\n", sum);
-   printf("The elapsed time is %e seconds\n", elapsed);
-   GET_TIME(start);
-   sum = Serial_pi(n);
-   GET_TIME(finish);
-   elapsed = finish - start;
-   printf("   Single thread est  = %.15f\n", sum);
-   printf("The elapsed time is %e seconds\n", elapsed);
-   printf("                   pi = %.15f\n", 4.0*atan(1.0));
+   printf("Para n = %lld terms con hebras= %ld,\n", n,thread_count);
+   printf("   Elapsed time = %f seconds\n", elapsed);
    
    pthread_mutex_destroy(&mutex);
    free(thread_handles);
