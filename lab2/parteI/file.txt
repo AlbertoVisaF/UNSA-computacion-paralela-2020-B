@@ -1,0 +1,6 @@
+With n = 100000000 terms,
+   Multi-threaded estimate of pi  = 3.141592643589880
+   Elapsed time = 8.023500e-02 seconds
+   Single-threaded estimate of pi = 3.141592643589326
+   Elapsed time = 2.720170e-01 seconds
+   Math library estimate of pi    = 3.141592653589793
