@@ -9,18 +9,8 @@
  * Output:
  *    Time for BARRIER_COUNT barriers
  *
- * Compile:
- *    gcc -g -Wall -o pth_sem_bar pth_sem_bar.c -lpthread
- *    timer.h needs to be available
- *
  * Usage:
- *    ./pth_sem_bar <thread_count>
- *
- * Note:
- *    Setting compile flag -DDEBUG will cause a message to be
- *    printed after completion of each barrier.
- *
- * IPP:   Section 4.8.2  (pp. 177  and ff.)
+ *    pth_busy_bar <thread_count>
  */
 
 #include <stdio.h>
@@ -29,10 +19,10 @@
 #include <semaphore.h>
 #include "timer.h"
 
-#define BARRIER_COUNT 100
+#define BARRIER_COUNT 1000
 
 int thread_count;
-int counter;
+int count;
 sem_t barrier_sems[BARRIER_COUNT];
 sem_t count_sem;
 
@@ -45,14 +35,13 @@ int main(int argc, char* argv[]) {
    pthread_t* thread_handles; 
    double start, finish;
 
-   if (argc != 2)
-      Usage(argv[0]);
+   if (argc != 2) Usage(argv[0]);
    thread_count = strtol(argv[1], NULL, 10);
 
    thread_handles = malloc (thread_count*sizeof(pthread_t));
    for (i = 0; i < BARRIER_COUNT; i++)
-      sem_init(&barrier_sems[i], 0, 0);
-   sem_init(&count_sem, 0, 1);
+      sem_init(&barrier_sems[i], 0, 0);  // Init barrier_sems to 0
+   sem_init(&count_sem, 0, 1);  // Initialize count_sem to 1
 
    GET_TIME(start);
    for (thread = 0; thread < thread_count; thread++)
@@ -93,29 +82,22 @@ void Usage(char* prog_name) {
  * Return val:  Ignored
  */
 void *Thread_work(void* rank) {
-#  ifdef DEBUG
    long my_rank = (long) rank;
-#  endif
    int i, j;
 
    for (i = 0; i < BARRIER_COUNT; i++) {
       sem_wait(&count_sem);
-      if (counter == thread_count - 1) {
-         counter = 0;
+      if (count == thread_count - 1) {
+         count = 0;
          sem_post(&count_sem);
          for (j = 0; j < thread_count-1; j++)
             sem_post(&barrier_sems[i]);
       } else {
-         counter++;
+         count++;
          sem_post(&count_sem);
          sem_wait(&barrier_sems[i]);
       }
-#     ifdef DEBUG
-      if (my_rank == 0) {
-         printf("All threads completed barrier %d\n", i);
-         fflush(stdout);
-      }
-#     endif
+      
    }
 
    return NULL;
