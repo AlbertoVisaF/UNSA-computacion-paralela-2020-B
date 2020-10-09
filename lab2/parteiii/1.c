@@ -1,20 +1,3 @@
-/* File:  
- *    pth_busy_bar1.c
- *
- * Purpose:
- *    Use busy wait barriers to synchronize threads.
- *
- * Compile:  gcc -g -Wall -O0 -o pth_busy_bar1 pth_busy_bar1.c -lpthread
- * Run:      ./pth_busy_bar1 <thread count>
- *
- * Input:
- *    none
- * Output:
- *    Time for BARRIER_COUNT barriers
- *
- * Note:  Use -O0 to turn off compiler optimization
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -72,25 +55,17 @@ void Usage(char* prog_name) {
 }  /* Usage */
 
 
-/*-------------------------------------------------------------------
- * Function:    Thread_work
- * Purpose:     Run BARRIER_COUNT barriers
- * In arg:      rank
- * Global var:  thread_count, barrier_thread_counts, barrier_mutex
- * Return val:  Ignored
- */
+
 void *Thread_work(void* rank) {
-// long my_rank = (long) rank; 
    int i;
 
    for (i = 0; i < BARRIER_COUNT; i++) {
-      /* Start Barrier */
       pthread_mutex_lock(&barrier_mutex);
       barrier_thread_counts[i]++;
       pthread_mutex_unlock(&barrier_mutex);
       while (barrier_thread_counts[i] < thread_count);
-      /* End Barrier */
+      
    }
 
    return NULL;
-}  /* Thread_work */
+}  

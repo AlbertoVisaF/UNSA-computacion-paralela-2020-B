@@ -1,18 +1,3 @@
-/* File:  
- *    pth_sem_bar.c
- *
- * Purpose:
- *    Use semaphore barriers to synchronize threads.
- *
- * Input:
- *    none
- * Output:
- *    Time for BARRIER_COUNT barriers
- *
- * Usage:
- *    pth_busy_bar <thread_count>
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -62,11 +47,7 @@ int main(int argc, char* argv[]) {
 }  /* main */
 
 
-/*--------------------------------------------------------------------
- * Function:    Usage
- * Purpose:     Print command line for function and terminate
- * In arg:      prog_name
- */
+
 void Usage(char* prog_name) {
 
    fprintf(stderr, "usage: %s <number of threads>\n", prog_name);
@@ -74,13 +55,7 @@ void Usage(char* prog_name) {
 }  /* Usage */
 
 
-/*-------------------------------------------------------------------
- * Function:    Thread_work
- * Purpose:     Run BARRIER_COUNT barriers
- * In arg:      rank
- * Global var:  thread_count, count, barrier_sems, count_sem
- * Return val:  Ignored
- */
+
 void *Thread_work(void* rank) {
    long my_rank = (long) rank;
    int i, j;
@@ -101,4 +76,4 @@ void *Thread_work(void* rank) {
    }
 
    return NULL;
-}  /* Thread_work */
+} 

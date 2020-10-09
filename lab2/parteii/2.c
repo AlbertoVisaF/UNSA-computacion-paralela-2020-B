@@ -1,20 +1,3 @@
- /* File:  
- *    pth_hello.c
- *
- * Purpose:
- *    Illustrate basic use of pthreads:  create some threads,
- *    each of which prints a message.
- *
- * Input:
- *    none
- * Output:
- *    message from each thread
- *
- * Compile:  gcc -g -Wall -o pth_hello pth_hello.c -lpthread
- * Usage:    ./pth_hello <thread_count>
- *
- * IPP:   Section 4.2 (p. 153 and ff.)
- */
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h> 
