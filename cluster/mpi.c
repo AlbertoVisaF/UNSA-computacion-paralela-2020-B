@@ -1,110 +1,112 @@
+#include <mpi.h>
+#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <mpi.h>
-#define SIZE 1024
-#define FROM MASTER 1 
-#define FROM WORKER 2
-#define DEBUG 0 /∗ 1 = debug on, 0 = debug off ∗/
-MPI Status status;
-static double a[SIZE][SIZE];
-static double b[SIZE][SIZE];
-static double c[SIZE][SIZE];
-static void
-init matrix(void)
+
+#define SIZE 500
+#define MASTER 0
+#define FROM_MASTER 1
+#define FROM_WORKER 2
+
+int main(int argc, char *argv[])
 {
-    int i, j;
-    for (i = 0; i < SIZE; i++)
-        for (j = 0; j < SIZE; j++) {
-            a[i][j] = 1.0;
-            b[i][j] = 1.0;
-        }
-}
-static void
-print matrix(void)
-{
-    int i, j;
-    for (i = 0; i < SIZE; i++) {
-        for (j = 0; j < SIZE; j++)
-            printf(" %f", c[i][j]);
-        printf("\n");
+    int numtasks,              /* number of tasks in partition */
+        taskid,                /* matrix1 task identifier */
+        numworkers,            /* number of worker tasks */
+        source,                /* task id of message source */
+        dest,                  /* task id of message destination */
+        rows,                  /* rows of matrix A sent to each worker */
+        averow, extra, offset, /* used to determine rows sent to each worker */
+        i, j, k;               /* misc */
+
+    double matrix1[SIZE][SIZE],        /* matrix A to be multiplied */
+        matrix2[SIZE][SIZE],           /* matrix B to be multiplied */
+        matrixR[SIZE][SIZE];           /* result matrix C */
+
+    MPI_Status status;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &taskid);
+    MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
+
+    printf("Numtasks: %d \n", numtasks);
+
+    if (numtasks < 2)
+    {
+        int errCod;
+        printf("Need at least two MPI tasks...\n");
+        MPI_Abort(MPI_COMM_WORLD, errCod);
+        exit(1);
     }
-}
-int
-main(int argc, char ∗∗argv)
-{
-    int myrank, nproc;
-    int rows;
-    int mtype;
-    int dest, src, offset;
-    double start time, end time;
-    int i, j, k;
-    MPI Init(&argc, &argv);
-    MPI Comm size(MPI COMM WORLD, &nproc);
-    MPI Comm rank(MPI COMM WORLD, &myrank);
-    if (myrank == 0) {
-        printf("SIZE = %d, number of nodes = %d\n", SIZE, nproc);
-        init matrix();
-        start time = MPI Wtime();
-        rows = SIZE / nproc;
-        mtype = FROM MASTER;
-        offset = rows;
-        for (dest = 1; dest < nproc; dest++) {
-            if (DEBUG)
-                printf(" sending %d rows to task %d\n", rows, dest);
-            MPI Send(&offset, 1, MPI INT, dest, mtype, MPI_COMM_WORLD);
-            MPI Send(&rows, 1, MPI INT, dest, mtype, MPI_COMM_WORLD);
-            MPI Send(&a[offset][0], rows∗SIZE, MPI DOUBLE, dest, mtype,
-                MPI_COMM_WORLD);
-            MPI Send(&b, SIZE∗SIZE, MPI DOUBLE, dest, mtype, MPI_COMM_WORLD);
-            offset += rows;
+
+    numworkers = numtasks - 1;
+
+    if (taskid == MASTER)
+    {
+        printf("MPI MM has started with %d tasks.\n", numtasks);
+
+        for (i=0; i < SIZE; i++)
+            for (j=0; j < SIZE; j++)
+                matrix1[i][j] = ((double)rand() / (double)(RAND_MAX)) * 9.0;
+
+        for (i=0; i < SIZE; i++)
+            for (j=0; j < SIZE; j++)
+                matrix2[i][j] = ((double)rand() / (double)(RAND_MAX)) * 9.0;
+
+        /* Measure start time */
+        double start = MPI_Wtime();
+
+        /* Send matrix data to the worker tasks */
+        averow = SIZE / numworkers;
+        extra = SIZE % numworkers;
+        offset = 0;
+        for (dest = 1; dest <= numworkers; dest++)
+        {
+            rows = (dest <= extra) ? averow + 1 : averow;
+            printf("Sending %d rows to task %d offset=%d\n",rows,dest,offset);
+            MPI_Send(&offset, 1, MPI_INT, dest, FROM_MASTER, MPI_COMM_WORLD);
+            MPI_Send(&rows, 1, MPI_INT, dest, FROM_MASTER, MPI_COMM_WORLD);
+            MPI_Send(&matrix1[offset][0], rows * SIZE, MPI_DOUBLE, dest, FROM_MASTER, MPI_COMM_WORLD);
+            MPI_Send(&matrix2, SIZE * SIZE, MPI_DOUBLE, dest, FROM_MASTER, MPI_COMM_WORLD);
+            offset = offset + rows;
         }
-        for (i = 0; i < rows; i++) {
-            for (j = 0; j < SIZE; j++) {
-                c[i][j] = 0.0;
-                for (k = 0; k < SIZE; k++)
-                    c[i][j] = c[i][j] + a[i][k] ∗ b[k][j];
-            }
+
+        /* Receive results from worker tasks */
+        for (i = 1; i <= numworkers; i++)
+        {
+            source = i;
+            MPI_Recv(&offset, 1, MPI_INT, source, FROM_WORKER, MPI_COMM_WORLD, &status);
+            MPI_Recv(&rows, 1, MPI_INT, source, FROM_WORKER, MPI_COMM_WORLD, &status);
+            MPI_Recv(&matrixR[offset][0], rows * SIZE, MPI_DOUBLE, source, FROM_WORKER, MPI_COMM_WORLD, &status);
+            printf("Received results from task %d\n",source);
         }
-        mtype = FROM WORKER;
-        for (src = 1; src < nproc; src++) {
-            MPI Recv(&offset, 1, MPI INT, src, mtype, MPI_COMM_WORLD, &status);
-            MPI Recv(&rows, 1, MPI INT, src, mtype, MPI_COMM_WORLD, &status);
-            MPI Recv(&c[offset][0], rows∗SIZE, MPI_DOUBLE, src, mtype,
-                MPI_COMM_WORLD, &status);
-            if (DEBUG)
-                printf(" recvd %d rows from task %d, offset = %d\n",
-                rows, src, offset);
-        }
-        end time = MPI_Wtime();
-        if (DEBUG)
-            print matrix();
-        printf("Execution time on % 2d nodes: %f\n", nproc, end time−start time);
-    } else {
-        mtype = FROM MASTER;
-        MPI Recv(&offset, 1, MPI INT, 0, mtype, MPI COMM WORLD, &status);
-        MPI Recv(&rows, 1, MPI INT, 0, mtype, MPI COMM WORLD, &status);
-        MPI Recv(&a[offset][0], rows∗SIZE, MPI DOUBLE, 0, mtype,
-            MPI COMM WORLD, &status);
-        MPI Recv(&b, SIZE∗SIZE, MPI DOUBLE, 0, mtype, MPI COMM WORLD,
-            &status);
-        if (DEBUG)
-            printf("Rank = %d, offset = %d, row = %d, a[offset][0] = %e, b[0][0] = %e\n",
-            myrank, offset, rows, a[offset][0], b[0][0]);
-        for (i = offset; i < offset + rows; i++)
-            for (j = 0; j < SIZE; j++) {
-            c[i][j] = 0.0;
-            for (k = 0; k < SIZE; k++)
-                c[i][j] = c[i][j] + a[i][k] ∗ b[k][j];
-            }
-        if (DEBUG)
-            printf("Rank = %d, offset = %d, row = %d, c[offset][0] = %e\n",
-            myrank, offset, rows, a[offset][0]);
-        mtype = FROM WORKER;
-        MPI Send(&offset, 1, MPI INT, 0, mtype, MPI COMM WORLD);
-        MPI Send(&rows, 1, MPI INT, 0, mtype, MPI COMM WORLD);
-        MPI Send(&c[offset][0], rows∗SIZE, MPI DOUBLE, 0, mtype,
-            MPI COMM WORLD);
+
+        /* Measure finish time */
+        double finish = MPI_Wtime();
+        printf("Done in %f seconds.\n", finish - start);
     }
+
+    /**************************** worker task ************************************/
+    if (taskid > MASTER)
+    {
+        printf("Task %d start running.\n", taskid);
+        MPI_Recv(&offset, 1, MPI_INT, MASTER, FROM_MASTER, MPI_COMM_WORLD, &status);
+        MPI_Recv(&rows, 1, MPI_INT, MASTER, FROM_MASTER, MPI_COMM_WORLD, &status);
+        MPI_Recv(&matrix1, rows * SIZE, MPI_DOUBLE, MASTER, FROM_MASTER, MPI_COMM_WORLD, &status);
+        MPI_Recv(&matrix2, SIZE * SIZE, MPI_DOUBLE, MASTER, FROM_MASTER, MPI_COMM_WORLD, &status);
+
+    //#pragma omp parallel for private(i,j,k)
+        for (k = 0; k < SIZE; k++)
+            for (i = 0; i < rows; i++)
+            {
+                matrixR[i][k] = 0.0;
+                for (j = 0; j < SIZE; j++)
+                    matrixR[i][k] = matrixR[i][k] + matrix1[i][j] * matrix2[j][k];
+            }
+
+        MPI_Send(&offset, 1, MPI_INT, MASTER, FROM_WORKER, MPI_COMM_WORLD);
+        MPI_Send(&rows, 1, MPI_INT, MASTER, FROM_WORKER, MPI_COMM_WORLD);
+        MPI_Send(&matrixR, rows * SIZE, MPI_DOUBLE, MASTER, FROM_WORKER, MPI_COMM_WORLD);
+    }
+
     MPI_Finalize();
-    return 0;
 }
