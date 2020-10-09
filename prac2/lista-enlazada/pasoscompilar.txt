@@ -1,0 +1,2 @@
+gcc -g  -Wall  -o  pth_mutex_nodo pth_ll_mutexnode.c my_rand.c -lpthread 
+./pth_mutex_nodo 1 < in2.txt
